@@ -1,0 +1,160 @@
+---
+title: "Detached House Prices in Downtown Toronto and Mississauga"
+author: "SS3901"
+date: "October 24, 2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+## I. Exploratory Data Analysis
+
+
+```{r, echo = F, message = F}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(jtools)
+library(huxtable)
+
+house_data <- read.csv("real20.csv")
+set.seed(3901)
+sample_hd <- house_data[sample(nrow(house_data), 200, replace = F), ]
+
+lm1 = lm(sample_hd$sold ~ sample_hd$list, data = sample_hd)
+
+plot(sample_hd$list, sample_hd$sold, 
+     main="Detached Houses in Downtown Toronto and Mississauga (Figure 1)", 
+     xlab="Last List Price (Millions CAD)", 
+     ylab="Sale Price (Millions CAD)",
+     abline(lm1, col = "green", lty = "dashed"))
+```
+
+In Figure 1, we have plotted the actual sale prices of the property on the last list price of the property, both in millions of Canadian dollars. We observe two influential points on this scatterplot. These points influence our best fit line by decreasing its slope, since the relative last list price for these points are much higher than the rest of the observations in our sample of 200 houses.
+
+```{r, echo = F, message = F}
+sample_hd <- sample_hd %>% 
+  filter(ID != 112 & ID != 95)
+
+house_tor = sample_hd[sample_hd$location == "T",]
+house_mis = sample_hd[sample_hd$location == "M",]
+
+lm2 = lm(sample_hd$sold ~ sample_hd$list, data = sample_hd)
+lm3 = lm(house_tor$sold ~ house_tor$list, data = house_tor)
+lm4 = lm(house_mis$sold ~ house_mis$list, data = house_mis)
+
+plot(sample_hd$list, sample_hd$sold, 
+     main="Detached Houses in Downtown Toronto and Mississauga (Figure 2)", 
+     xlab="Last List Price (Millions CAD)", 
+     ylab="Sale Price (Millions CAD)")
+abline(lm2, col = "green", lty = "dashed", lwd = 1)
+abline(lm3, col = "blue", lwd = 1)
+abline(lm4, col = "red", lwd = 1)
+points(house_tor$list, house_tor$sold, col = "blue")
+points(house_mis$list, house_mis$sold, col = "red")
+legend(3.6, 2, legend = c("Houses in Mississauga", "Houses in Toronto"),
+       col = c("red", "blue"), lwd = 1, cex = 0.8)
+```
+
+Influential points with IDs 95 and 112 are now removed from our sample. Hence, in Figure 2 we observe that our best fit line is a better fit since now all of the points are scattered around it which suggests that the error has been reduced compared to Figure 1.
+
+In Figure 2, we observe a positive linear relationship between the last list prices and the actual sale prices for all houses, suggesting a increase in the actual sale price compared to the last list price of the property. We observe similar slopes $\hat{B_1}^T$ and $\hat{B_1}^M$ for both houses in downtown Toronto and Mississauga, where $\hat{B_1}^T = 0.89108$ and $\hat{B_1}^M = 0.88749$. This suggests that sale prices in both neighborhoods increased similarly since the last list price. 
+
+```{r, echo = F, message = F}
+lm5 = lm(sample_hd$sold ~ sample_hd$taxes, data = sample_hd)
+lm6 = lm(house_tor$sold ~ house_tor$taxes, data = house_tor)
+lm7 = lm(house_mis$sold ~ house_mis$taxes, data = house_mis)
+
+plot(sample_hd$taxes, sample_hd$sold, 
+     main="Detached Houses in Downtown Toronto and Mississauga (Figure 3)", 
+     xlab="Previous Year's Property Tax (CAD)", 
+     ylab="Sale Price (Millions CAD)")
+abline(lm5, col = "green", lty = "dashed", lwd = 1)
+abline(lm6, col="blue",lwd=1)
+abline(lm7, col="red", lwd=1)
+points(house_tor$taxes, house_tor$sold, col="blue")
+points(house_mis$taxes, house_mis$sold, col="red")
+legend(17500, 2, legend=c("Houses in Mississauga", "Houses in Toronto"),
+       col=c("red", "blue"), lwd = 1, cex = 0.8)
+```
+
+Further on, in Figure 3, we plot the actual sale prices in millions of Canadian dollars on the previous year's taxes in Canadian dollars for detached houses. Compared to Figure 2, we observe a greater difference in intercepts. Where intercepts from Figure 3 is $\hat{B_0}^T = 0.79702$ and $\hat{B_0}^M = 0.41045$. Since tax can never equal to 0 dollars, we do not interpret the actual intercept. However, since both the slope and the intercept is greater for houses in downtown Toronto, we can say that comparing two houses in different neighborhoods with similar amounts of tax payed previous year, we expect house in downtown Toronto to have a higher sale price.
+
+## II. Methods and Model
+
+```{r, echo = F, warning = F, results = F}
+sample_hd_m <- sample_hd %>% 
+  mutate(Sold = sold*1000000) %>% 
+  mutate(List = list*1000000)
+
+house_tor_m <- house_tor %>% 
+  mutate(Sold = sold*1000000) %>% 
+  mutate(List = list*1000000) 
+
+house_mis_m <- house_mis %>% 
+  mutate(Sold = sold*1000000) %>% 
+  mutate(List = list*1000000) 
+
+lm8 = lm(sample_hd_m$Sold ~ sample_hd_m$List, data = sample_hd_m)
+lm9 = lm(house_tor_m$Sold ~ house_tor_m$List, data = house_tor_m)
+lm10 = lm(house_mis_m$Sold ~ house_mis_m$List, data = house_mis_m)
+
+summary(lm8) #SLR All
+summary(lm9) #SLR T
+summary(lm10) #SLR M
+options(scipen = 9)
+```
+
+```{r, echo = F, warning = F, message = F}
+export_summs(lm8, lm9, lm10, 
+             model.names = c("All Houses",
+                             "Houses in Toronto",
+                             "Houses in Mississauga"),
+             coefs = c("Intercept" = "(Intercept)",
+                       "The Last List Price" = "sample_hd_m$List",
+                       "The Last List Price for Toronto Neigborhood" = "house_tor_m$List",
+                       "The Last List Price for Mississauga Neighborhood" = "house_mis_m$List"),
+             ci_level = 0.95,
+             statistics = c("Variance of the Error term" = "sigma", 
+                            "P-value" = "p.value", 
+                            "R-squared" = "r.squared",
+                            "N" = "nobs"),
+             error_format = "[{conf.low}, {conf.high}]",
+             digits = 4)
+```
+
+First we have manipulated the data so that it has same measurements, by changing the actual sale price and the the last list price to be reported in Canadian dollars instead of millions of Canadian dollars. This manipulation is not a transformation, moreover, it only influences the intercept, the standard error of the intercept and the residuals by enlarging them by a million times. However, it does not influence the slope nor anything related to statistical significance tests. This manipulation is done so that the intercept and the error is clearer in the table by being reflected as Canadian dollars instead of in millions CAD. Then, we have regressed the actual sale price on the last list price first for all houses, then for subset of houses in downtown Toronto, and finally for subset of houses in Mississauga.
+
+Above we have a table with R-squared, the estimated intercept, the estimated slope, the estimate of the variance of the error term, the p-value for the test with null hypothesis that the slope is 0, and a 95% confidence intervals (reported in parentheses under intercepts and slopes).
+
+In our sample of 198 houses, 107 of them are located in downtown Toronto and 91 are located in Mississauga.The coefficient of determination for different SLRs suggest that: 
+
+- Approximately 96% variation in the actual sale prices of houses in both neighborhoods is explained by its regression line.
+- Approximately 94% variation in the actual sale prices of houses in downtown Toronto is explained by its regression line.
+- Approximately 99% variation in the actual sale prices of houses in Mississauga is explained by its regression line.
+
+We know that predictor variable for houses in downtown Toronto and Mississauga (i.e. previous list price) is a subset of the predictor variable for all houses in this sample. In addition, standard errors for $\hat{B_1}^A$, $\hat{B_1}^T$, and $\hat{B_1}^M$ are 0.01281, 0.02166, and 0.01113 respectively. In order to compare the coefficient of determinations for these three SLRs we must consider the explanatory variables for these different SLRs and the variation in our explanatory variables, the standard error for $\hat{B_1}$s. We expect the higher variation in our explanatory variable to increase our coefficient of determination but this is not the case here. Standard error for $\hat{B_1}^T$ is the greatest out of all three where the $R^2$ is the lowest. Thus, we can confidently say that regression for the houses in Mississauga fits better to the model compared to the SLR of houses in downtown Toronto.
+
+In order to use a pooled two-sample t-test to determine if there is a statistically significant difference between the slopes in different models, we must consider couple of conditions. First, we need our data to be independent across two sets of neighborhoods (i.e. samples must be independent). We also need our data points in these samples to be linearly independent from each other. Most importantly, we need the two populations to have the same variance. In terms of independence we do not have reason to think that these samples are dependent on each other, and, we also know that samples are independent within. Hence, must consider the last condition. For houses in Toronto the sample variance is 0.0004691556, and for houses in Mississauga it is 0.0001238769. Furthermore, since sample variance is an unbiased estimator of the population variance for these two different neighborhoods, we can say that variances are slightly different from each other. We do not believe that the difference is low enough to be neglected and pooled, however, with greater numbers of observations these variances may further converge, then, we may use a pooled two-sample t-test.
+
+## III. Discussions and Limitations
+
+In the discussion we will focus on the second SLR model which for the houses in downtown Toronto neighborhood. From this model we obtain statistically significant results in all confidence interval for our slope and our intercept. There is no meaningful value of the intercept since none of the houses had or can have a previous listing price of 0 dollars. On the other hand, our statistically significant $\hat{B_1}^T$ equals to 0.02166 and it has a meaningful interpretation. It suggests that a dollar increase in previous listing price is associated with a 0.02166 dollar increase, on average, in the sale price for houses in downtown Toronto. Moreover, a $1000 increase in previous listing price is associated with $21.66 increase, on average, in the sale price for houses in downtown Toronto. From table in Part II, with low p-values and high R-squared, we can confidently say that last listing prices predict the actual sale price, and there is a positive linear relationship.
+
+```{r, echo = F, message = F}
+toronto.lm = lm9
+toronto.stdres = rstandard(toronto.lm)
+
+qqnorm(toronto.stdres, 
+       ylab="Standardized Residuals", 
+       xlab="Theoretical Quantities", 
+       main="Normal Q-Q for Houses in Toronto (Figure 4)") 
+qqline(toronto.stdres)
+
+plot(house_tor_m$List, toronto.stdres**(1/2), 
+       ylab="Standardized Residuals Squared", 
+       xlab="Last List Prices (in Canadian dollars)", 
+       main="Standardized Residuals Squared plot for Houses in Toronto (Figure 5)") 
+```
+
+To further investigate this linear relationship we have used two diagnostic plots: a normal Q-Q plot and a standardized residuals squared plot. The former is used to assess the normality of the errors, which we desire for the linear relationship to be appropriate. This is especially important since our sample are relatively small. We observe a linear trend in Figure 4 which suggests that our error terms are normally distributed. The later is used to assess homoscedasticity, and, we wish to observe no trend in this plot so that we can confirm that we have constant variance for our errors. As seen on Figure 5 are no apparent trends in this plot which suggest that our variance is homogeneous as possible. Furthermore, in Figure 2, we observe that the blue line supports model linearity which also supports appropriateness of SLR model. Last condition that we want to satisfy is that errors uncorrelated from each other. In order to satisfy this condition we must have greater knowledge about how the sample was collected. We were given the data prior to analysis and have not played a role in sample collection. It is very unlikely that there was random assignment or random sampling. Random sampling is almost impossible since they cannot randomly build houses in different neighborhoods just for the sake of this study making the data observational rather than experimental. Thus, the errors may be correlated with each other because another variable may be confounding this relationship. These confounders, or two potential numeric predictors, can be house size and when the house was built. We would expect larger houses  and newer houses to have higher sale prices. Moreover, the houses in our sample that are in Toronto may be much newer than the houses in Mississauga, which may cause a correlation in our errors. 
